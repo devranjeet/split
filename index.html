@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Story Split + Tag Tool (Premium UI)</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* --- Premium Dark Theme & Layout --- */
+  :root {
+    --bg-main: #0f172a; /* Slate Dark */
+    --bg-card: #1e293b;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --primary: #3b82f6; /* Blue */
+    --primary-hover: #2563eb;
+    --success: #10b981; /* Green */
+    --warning: #f59e0b; /* Orange */
+    --border: #334155;
+  }
+
+  body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    padding: 20px;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 800px;
+    background-color: var(--bg-card);
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border);
+  }
+
+  h2 {
+    text-align: center;
+    margin-top: 0;
+    font-weight: 600;
+    color: #fff;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 15px;
+  }
+
+  /* --- Inputs & Textareas --- */
+  .label-title {
+    font-weight: 500;
+    color: var(--text-muted);
+    font-size: 14px;
+    margin: 15px 0 5px 0;
+    display: block;
+  }
+
+  input, textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--bg-main);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    font-family: inherit;
+    font-size: 14px;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+  }
+
+  input:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  }
+
+  textarea { height: 120px; resize: vertical; }
+
+  /* --- Modern Buttons --- */
+  .action-buttons { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+  
+  button {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 15px;
+    font-family: inherit;
+    transition: transform 0.2s, box-shadow 0.2s, background-color 0.3s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+  }
+
+  button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+
+  button:active:not(:disabled) { transform: translateY(0); }
+
+  .btn-primary { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
+  .btn-primary:disabled { background: #475569; color: #94a3b8; cursor: not-allowed; transform: none; box-shadow: none; }
+  
+  .btn-copy { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+  .btn-download { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+
+  /* --- Output Chunks --- */
+  .chunk {
+    background: var(--bg-main);
+    padding: 20px;
+    margin: 20px 0;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+  }
+  
+  .chunk-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-weight: 500;
+  }
+
+  /* --- Loading Spinner --- */
+  .spinner {
+    border: 3px solid rgba(255,255,255,0.1);
+    border-top: 3px solid #fff;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+  /* --- Toast Notification (Mobile App Style) --- */
+  #toast {
+    visibility: hidden;
+    min-width: 250px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 8px;
+    padding: 16px;
+    position: fixed;
+    z-index: 1000;
+    left: 50%;
+    bottom: 30px;
+    transform: translateX(-50%);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    font-size: 14px;
+  }
+  #toast.show {
+    visibility: visible;
+    animation: fadein 0.5s, fadeout 0.5s 2.5s;
+  }
+  @keyframes fadein { from { bottom: 0; opacity: 0; } to { bottom: 30px; opacity: 1; } }
+  @keyframes fadeout { from { bottom: 30px; opacity: 1; } to { bottom: 0; opacity: 0; } }
+
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h2>✨ AI Story Tagging Pro</h2>
+
+  <span class="label-title">🔑 OpenRouter API Key</span>
+  <input type="password" id="apiKey" placeholder="Apni API Key yahan paste karein...">
+
+  <span class="label-title">📝 AI Prompt (Instructions)</span>
+  <textarea id="customPrompt" placeholder="AI ko kya karna hai? Yahan likhein..."></textarea>
+
+  <span class="label-title">📖 Story / Script Paste Karein</span>
+  <textarea id="story" placeholder="Apni kahani ya script yahan paste karein..." style="height: 180px;"></textarea>
+
+  <span class="label-title">✂️ Chunk Size (Character Limit)</span>
+  <input type="number" id="limit" value="3000">
+
+  <div class="action-buttons">
+    <button class="btn-primary" onclick="processStory()" id="startBtn">▶️ Start Processing</button>
+    <button class="btn-copy" onclick="copyAllResults()" id="copyBtn" style="display:none;">📋 Copy All</button>
+    <button class="btn-download" onclick="downloadTxtFile()" id="downloadBtn" style="display:none;">💾 Download .txt</button>
+  </div>
+
+  <div id="output"></div>
+</div>
+
+<div id="toast">Message here</div>
+
+<script>
+// --- Toast Notification System (Replace boring alerts) ---
+function showToast(message, isError = false) {
+  const toast = document.getElementById("toast");
+  toast.innerText = message;
+  toast.style.backgroundColor = isError ? "#ef4444" : "#10b981"; // Red for error, Green for success
+  toast.className = "show";
+  setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+}
+
+// पेज लोड होते ही पुरानी सेटिंग्स वापस लाएं
+window.onload = function() {
+  const savedKey = localStorage.getItem('myApiKey');
+  const savedPrompt = localStorage.getItem('myPrompt');
+  if(savedKey) document.getElementById('apiKey').value = savedKey;
+  document.getElementById('customPrompt').value = savedPrompt ? savedPrompt : "Neeche ek Hindi story hai. Isme TTS ke liye tags add karo:\n\n";
+};
+
+const delay = ms => new Promise(res => setTimeout(res, ms));
+
+async function processStory() {
+  const text = document.getElementById('story').value.trim();
+  const limit = parseInt(document.getElementById('limit').value);
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const customPrompt = document.getElementById('customPrompt').value.trim();
+  
+  const output = document.getElementById('output');
+  const copyBtn = document.getElementById('copyBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const startBtn = document.getElementById('startBtn');
+
+  if (!apiKey) return showToast("Bhai, pehle OpenRouter API Key dalein!", true);
+  if (!text) return showToast("Pehle kahani (story) paste karein!", true);
+
+  localStorage.setItem('myApiKey', apiKey);
+  localStorage.setItem('myPrompt', customPrompt);
+
+  output.innerHTML = '';
+  copyBtn.style.display = 'none';
+  downloadBtn.style.display = 'none';
+  
+  // बटन को लोडिंग स्टेट में बदलें
+  startBtn.innerHTML = `<span class="spinner"></span> Processing...`;
+  startBtn.disabled = true;
+
+  let chunks = [];
+  let start = 0;
+
+  while (start < text.length) {
+    let end = start + limit;
+    if (end < text.length) {
+      let lastDot = text.lastIndexOf('.', end);
+      let lastNewLine = text.lastIndexOf('\n', end);
+      if (lastDot < start) lastDot = -1;
+      if (lastNewLine < start) lastNewLine = -1;
+      end = Math.max(lastDot, lastNewLine);
+
+      if (end === -1) {
+        showToast(`Error: Limit ke andar Full Stop ya New Line nahi mili!`, true);
+        startBtn.innerHTML = "▶️ Start Processing";
+        startBtn.disabled = false;
+        return;
+      } else {
+        end = end + 1; 
+      }
+    }
+    chunks.push(text.slice(start, end).trim());
+    start = end;
+  }
+
+  for (let i = 0; i < chunks.length; i++) {
+    const div = document.createElement('div');
+    div.className = 'chunk';
+    // लोडिंग UI
+    div.innerHTML = `
+      <div class="chunk-header" style="color: var(--warning);">
+        <span>⚙️ Part ${i + 1} of ${chunks.length}</span>
+        <span class="spinner" style="border-top-color: var(--warning);"></span>
+      </div>
+    `;
+    output.appendChild(div);
+
+    const finalPrompt = `${customPrompt}\n\n${chunks[i]}`;
+
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemma-4-31b-it:free",
+          messages: [{ role: "user", content: finalPrompt }]
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.choices && data.choices.length > 0) {
+        div.innerHTML = `
+          <div class="chunk-header" style="color: var(--success);">
+            <span>✅ Part ${i + 1} Complete</span>
+          </div>
+          <textarea class="result-box">${data.choices[0].message.content}</textarea>
+        `;
+      } else {
+        div.innerHTML = `<div class="chunk-header" style="color: #ef4444;">❌ API Error in Part ${i + 1}</div>`;
+      }
+    } catch (err) {
+      div.innerHTML = `<div class="chunk-header" style="color: #ef4444;">❌ Network Error</div>`;
+    }
+
+    if (i < chunks.length - 1) await delay(2000); 
+  }
+
+  // प्रोसेस खत्म होने पर बटन वापस नॉर्मल करें
+  startBtn.innerHTML = "▶️ Start Again";
+  startBtn.disabled = false;
+  copyBtn.style.display = 'flex';
+  downloadBtn.style.display = 'flex';
+  showToast("🎉 Sabhi parts process ho gaye!");
+}
+
+function getFinalText() {
+  const resultBoxes = document.querySelectorAll('.result-box');
+  let finalStory = "";
+  resultBoxes.forEach(box => { finalStory += box.value + "\n\n=========================\n\n"; });
+  return finalStory;
+}
+
+function copyAllResults() {
+  const text = getFinalText();
+  if (!text.trim()) return showToast("Copy karne ke liye kuch nahi hai!", true);
+  navigator.clipboard.writeText(text).then(() => showToast("📋 Pura text copy ho gaya!"));
+}
+
+function downloadTxtFile() {
+  const text = getFinalText();
+  if (!text.trim()) return showToast("Download karne ke liye kuch nahi hai!", true);
+  const blob = new Blob([text], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "Tagged_Story_Output.txt";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast("💾 File download ho gayi!");
+}
+</script>
+
+</body>
+</html>
