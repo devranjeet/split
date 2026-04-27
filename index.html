@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Story Split + Tag Tool (Ultimate Pro)</title>
+<title>Smart Story Splitter Pro</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   /* --- Premium Dark Theme --- */
@@ -27,24 +27,26 @@
   
   input, textarea { width: 100%; padding: 12px; border-radius: 8px; background: var(--bg-main); color: var(--text-main); border: 1px solid var(--border); font-family: inherit; font-size: 14px; box-sizing: border-box; transition: 0.3s; }
   input:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
-  textarea { height: 120px; resize: vertical; }
+  textarea { height: 200px; resize: vertical; }
 
-  /* --- Buttons --- */
+  /* --- Main Buttons --- */
   .action-buttons { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
   button { flex: 1; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 15px; font-family: inherit; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; color: white; }
-  button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-  button:disabled { filter: grayscale(100%); cursor: not-allowed; opacity: 0.7; }
+  button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
   
   .btn-primary { background: linear-gradient(135deg, #3b82f6, #2563eb); }
   .btn-copy { background: linear-gradient(135deg, #10b981, #059669); }
   .btn-download { background: linear-gradient(135deg, #f59e0b, #d97706); }
 
+  /* --- Small Copy Button (New) --- */
+  .btn-small { flex: none; background: #334155; padding: 6px 12px; font-size: 13px; border-radius: 6px; box-shadow: none; transition: 0.2s; }
+  .btn-small:hover { background: var(--primary); transform: translateY(0); box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4); }
+
   /* --- Output Chunks --- */
   .chunk { background: var(--bg-main); padding: 20px; margin: 20px 0; border-radius: 12px; border: 1px solid var(--border); }
-  .chunk-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: 500; font-size: 14px; }
-  
-  .spinner { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid currentColor; border-radius: 50%; width: 16px; height: 16px; animation: spin 1s linear infinite; display: inline-block; }
-  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  .chunk-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .chunk-info { display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 14px; color: var(--success); }
+  .chunk-textarea { height: 150px; }
 
   /* --- Toast Notification --- */
   #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 1000; left: 50%; bottom: 30px; transform: translateX(-50%); box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 14px; }
@@ -56,23 +58,17 @@
 <body>
 
 <div class="container">
-  <h2>✨ AI Story Tagging Pro</h2>
-
-  <span class="label-title">🔑 OpenRouter API Key</span>
-  <input type="password" id="apiKey" placeholder="Apni API Key yahan paste karein...">
-
-  <span class="label-title">📝 AI Prompt (Instructions)</span>
-  <textarea id="customPrompt" placeholder="AI ko kya karna hai? Yahan likhein..."></textarea>
+  <h2>✂️ Smart Story Splitter Pro</h2>
 
   <span class="label-title">📖 Story / Script Paste Karein</span>
-  <textarea id="story" placeholder="Apni kahani ya script yahan paste karein..." style="height: 180px;"></textarea>
+  <textarea id="story" placeholder="Apni lambi kahani yahan paste karein..."></textarea>
 
   <span class="label-title">✂️ Chunk Size (Character Limit)</span>
   <input type="number" id="limit" value="3000">
 
   <div class="action-buttons">
-    <button class="btn-primary" onclick="processStory()" id="startBtn">▶️ Start Processing</button>
-    <button class="btn-copy" onclick="copyAllResults()" id="copyBtn" style="display:none;">📋 Copy All</button>
+    <button class="btn-primary" onclick="splitStory()">✂️ Split Story</button>
+    <button class="btn-copy" onclick="copyAllResults()" id="copyBtn" style="display:none;">📋 Copy All Parts</button>
     <button class="btn-download" onclick="downloadTxtFile()" id="downloadBtn" style="display:none;">💾 Download .txt</button>
   </div>
 
@@ -91,185 +87,122 @@ function showToast(message, isError = false) {
   setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
 }
 
-// --- Load Saved Data on Startup ---
-window.onload = function() {
-  const savedKey = localStorage.getItem('myApiKey');
-  if(savedKey) document.getElementById('apiKey').value = savedKey;
-  // Default Prompt
-  document.getElementById('customPrompt').value = "Neeche ek Hindi story hai. Isme TTS ke liye emotion tags add karo:\n\n";
-};
-
-const delay = ms => new Promise(res => setTimeout(res, ms));
-
-async function processStory() {
+function splitStory() {
   const text = document.getElementById('story').value.trim();
   const limit = parseInt(document.getElementById('limit').value);
-  const apiKey = document.getElementById('apiKey').value.trim();
-  const customPrompt = document.getElementById('customPrompt').value.trim();
-  
   const output = document.getElementById('output');
-  const startBtn = document.getElementById('startBtn');
   const copyBtn = document.getElementById('copyBtn');
   const downloadBtn = document.getElementById('downloadBtn');
 
-  if (!apiKey) return showToast("Pehle OpenRouter API Key dalein!", true);
-  if (!text) return showToast("Pehle kahani paste karein!", true);
+  if (!text) {
+    showToast("Bhai, pehle kahani (story) to paste karein!", true);
+    return;
+  }
 
-  localStorage.setItem('myApiKey', apiKey);
-  output.innerHTML = '';
-  copyBtn.style.display = 'none';
-  downloadBtn.style.display = 'none';
+  output.innerHTML = ''; // Purana result clear karein
   
-  startBtn.innerHTML = `<span class="spinner"></span> Processing...`;
-  startBtn.disabled = true;
-
   let chunks = [];
   let start = 0;
 
-  // --- Step 1: Smart Splitting ---
+  // --- Smart Splitting Logic ---
   while (start < text.length) {
     let end = start + limit;
+    
     if (end < text.length) {
       let lastDot = text.lastIndexOf('.', end);
       let lastNewLine = text.lastIndexOf('\n', end);
+      
       if (lastDot < start) lastDot = -1;
       if (lastNewLine < start) lastNewLine = -1;
       
       end = Math.max(lastDot, lastNewLine);
+      
       if (end === -1) {
-        showToast(`Error: Limit ke andar Break nahi mila!`, true);
-        startBtn.innerHTML = "▶️ Start Processing";
-        startBtn.disabled = false;
+        showToast(`⚠️ Error: Limit ke andar Break nahi mila! Kripya limit badhayein.`, true);
         return;
-      } else { end = end + 1; }
+      } else { 
+        end = end + 1; 
+      }
     }
+    
     chunks.push(text.slice(start, end).trim());
     start = end;
   }
 
-  // --- Step 2: Safe API Calls (With Retry & Emergency Brake) ---
-  let hasFatalError = false; 
-
-  for (let i = 0; i < chunks.length; i++) {
-    
-    if (hasFatalError) {
-      showToast("❌ Process rok di gayi hai kyonki pichla part fail ho gaya tha.", true);
-      break; 
-    }
-
+  // --- Displaying Chunks Instantly ---
+  chunks.forEach((chunkText, index) => {
     const div = document.createElement('div');
     div.className = 'chunk';
-    div.innerHTML = `<div class="chunk-header" style="color: var(--warning);"><span>⚙️ Part ${i + 1} of ${chunks.length} Process ho raha hai...</span><span class="spinner"></span></div>`;
+    const charCount = chunkText.length;
+    const partNumber = index + 1; // Part ka number
+
+    // Har chunk ke andar ek unique ID aur naya Copy Button lagaya gaya hai
+    div.innerHTML = `
+      <div class="chunk-header">
+        <div class="chunk-info">
+          <span>✅ Part ${partNumber} of ${chunks.length}</span>
+          <span style="color: var(--text-muted); font-size: 12px;">(Characters: ${charCount})</span>
+        </div>
+        <button class="btn-small" onclick="copySinglePart(${partNumber})">📋 Copy Part</button>
+      </div>
+      <textarea id="partBox-${partNumber}" class="chunk-textarea result-box" readonly>${chunkText}</textarea>
+    `;
     output.appendChild(div);
+  });
 
-    const finalPrompt = `${customPrompt}\n\n${chunks[i]}`;
-    let success = false;
-    let attempts = 0;
-    const maxAttempts = 3;
-
-    while (!success && attempts < maxAttempts) {
-      try {
-        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: { 
-            "Authorization": `Bearer ${apiKey}`, 
-            "Content-Type": "application/json",
-            "HTTP-Referer": window.location.href, // CORS fix
-            "X-Title": "AI Story Tagger"
-          },
-          body: JSON.stringify({
-            model: "google/gemma-2-9b-it:free", // Best Free Model
-            messages: [{ role: "user", content: finalPrompt }]
-          })
-        });
-
-        // Error 429: Rate Limit (Auto-Retry Logic)
-        if (res.status === 429) {
-          attempts++;
-          div.innerHTML = `<div class="chunk-header" style="color: var(--warning);"><span>⚠️ Server busy (429). 10 seconds mein retry kar raha hoon... (Attempt ${attempts}/${maxAttempts})</span><span class="spinner"></span></div>`;
-          await delay(10000); 
-          continue; 
-        }
-
-        // Error 401: Invalid API Key (Fatal Error)
-        if (res.status === 401) {
-          div.innerHTML = `<div class="chunk-header" style="color: var(--danger);">❌ Error 401: Aapki API Key galat ya expire ho chuki hai!</div>`;
-          hasFatalError = true; 
-          break; 
-        }
-
-        // Other Errors
-        if (!res.ok) {
-          const errorText = await res.text();
-          div.innerHTML = `<div class="chunk-header" style="color: var(--danger);">❌ Error ${res.status}: ${errorText}</div>`;
-          hasFatalError = true; 
-          break;
-        }
-
-        // Success Response
-        const data = await res.json();
-        if (data.choices && data.choices.length > 0) {
-          div.innerHTML = `<div class="chunk-header" style="color: var(--success);"><span>✅ Part ${i + 1} Complete</span></div><textarea class="result-box">${data.choices[0].message.content}</textarea>`;
-          success = true; 
-        } else {
-          div.innerHTML = `<div class="chunk-header" style="color: var(--danger);">❌ API ne blank response diya</div>`;
-          hasFatalError = true;
-          break;
-        }
-        
-      } catch (err) {
-        div.innerHTML = `<div class="chunk-header" style="color: var(--danger);">❌ Internet/Network Error: ${err.message}</div>`;
-        hasFatalError = true; 
-        break;
-      }
-    }
-
-    if (!success && !hasFatalError) {
-      div.innerHTML += `<div style="color: var(--danger); font-size: 13px; margin-top: 10px;">Bhai, 3 baar try kiya par server bahut busy hai. Aage ka process rok diya gaya hai.</div>`;
-      hasFatalError = true; 
-    }
-
-    // Normal Delay (8 seconds) to prevent free API block
-    if (i < chunks.length - 1 && !hasFatalError) {
-       await delay(8000); 
-    }
-  }
-
-  // --- Step 3: Finish & Show Buttons ---
-  startBtn.innerHTML = "▶️ Start Again";
-  startBtn.disabled = false;
+  copyBtn.style.display = 'flex';
+  downloadBtn.style.display = 'flex';
   
-  if (!hasFatalError) {
-    copyBtn.style.display = 'flex';
-    downloadBtn.style.display = 'flex';
-    showToast("🎉 Process Complete!");
-  }
+  showToast(`🎉 Story ${chunks.length} parts mein split ho gayi!`);
 }
 
-// --- Helpers: Gather Text, Copy & Download ---
+// --- NAYA FUNCTION: Sirf ek part ko copy karne ke liye ---
+function copySinglePart(partNumber) {
+  // Us specific part wale box ka text nikalna
+  const textBox = document.getElementById(`partBox-${partNumber}`);
+  const textToCopy = textBox.value;
+
+  if (!textToCopy.trim()) return;
+
+  // क्लिपबोर्ड (Clipboard) में कॉपी करना
+  navigator.clipboard.writeText(textToCopy).then(() => {
+    showToast(`✅ Part ${partNumber} copy ho gaya!`);
+  }).catch(err => {
+    showToast("❌ Copy fail ho gaya!", true);
+  });
+}
+
+// --- Helpers: Gather Text, Copy All & Download ---
 function getFinalText() {
   const resultBoxes = document.querySelectorAll('.result-box');
   let finalStory = "";
-  resultBoxes.forEach(box => { finalStory += box.value + "\n\n=========================\n\n"; });
+  resultBoxes.forEach((box, index) => { 
+    finalStory += `--- PART ${index + 1} ---\n\n` + box.value + "\n\n=========================\n\n"; 
+  });
   return finalStory;
 }
 
 function copyAllResults() {
   const text = getFinalText();
-  if (!text.trim()) return showToast("Copy karne ke liye kuch nahi hai!", true);
-  navigator.clipboard.writeText(text).then(() => showToast("📋 Pura text copy ho gaya!"));
+  if (!text.trim()) return;
+  navigator.clipboard.writeText(text).then(() => showToast("📋 Sabhi parts ek sath copy ho gaye!"));
 }
 
 function downloadTxtFile() {
   const text = getFinalText();
-  if (!text.trim()) return showToast("Download karne ke liye kuch nahi hai!", true);
+  if (!text.trim()) return;
   const blob = new Blob([text], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "Tagged_Story_Output.txt";
+  a.download = "Split_Story_Parts.txt";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  showToast("💾 File download
+  showToast("💾 File download ho gayi!");
+}
+</script>
+
+</body>
+</html>
